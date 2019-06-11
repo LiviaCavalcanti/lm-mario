@@ -1,0 +1,93 @@
+---
+title: "Regressão dos cartuchos de Mario"
+author: "Lívia Cavalcanti"
+date: "11 de junho de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Vamos considerar os dados de leilão de cartuchos do MARIO KART.
+```{r }
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(modelr)
+library(broom)
+mario_data = read_tsv('marioKart.txt')
+head(mario_data)
+```
+
+Observando os dados, vê-se dois outliers que, analisando os detalhes, percebemos que eles não são sobre leilão de cartuchos, mas sim de 10 cartuchos e de um console
+```{r }
+mario_data %>%
+    ggplot(aes(nBids, totalPr)) +
+    geom_point() 
+```
+
+Por não se encaixarem no tipo de dado alvo, eles serão removidos.
+```{r}
+filtered_mario = mario_data %>% filter(! ID %in% c(130335427560, 110439174663))
+
+filtered_mario %>%
+    ggplot(aes(nBids, totalPr)) +
+    geom_point() 
+```
+
+Com isso, criamos um modelo de regressão linear para explicar a relação entre as duas variáveis.
+```{r}
+lm_mario <- lm(totalPr ~ nBids, data=filtered_mario)
+
+tidy(lm_mario)
+glance(lm_mario)
+```
+
+```{r}
+filtered_mario %>% 
+  add_predictions(model = lm_mario) %>% # add o que o modelo estima p cada hs_grad
+  ggplot(mapping = aes(x = nBids, y = totalPr)) + 
+  geom_point(alpha = 0.4) + 
+  geom_line(aes(y = pred), colour = "red")
+```
+
+Pelo gráfico, podemos ver que o modelo não é muito explicativo, o que é justificado pela baixa magnitude da correlação entre o preço final do leilão e seu respectivo número de lances.
+```{r}
+cor(filtered_mario$nBids, filtered_mario$totalPr)
+```
+
+Procuremos, então, se há nos dados alguma outra relação mais forte onde a variável resposta seja o preço total.
+Investigando sua relação com o aumento do valor do cartucho durante o leilão, temos:
+```{r}
+increased_mario <- filtered_mario %>% mutate(increase = totalPr - startPr)
+head(increased_mario)
+```
+```{r}
+increased_mario %>%
+    ggplot(aes(nBids, increase)) +
+    geom_point() 
+```
+
+Fazendo o modelo, vemos que a métrica de explicação, R², aumenta considerávelmente.
+```{r}
+increase_lm <- lm(increase ~ nBids, data=increased_mario)
+
+tidy(increase_lm)
+glance(increase_lm)
+```
+
+```{r}
+increased_mario %>% 
+  add_predictions(model = increase_lm) %>%
+  ggplot(mapping = aes(x = nBids, y = increase)) + 
+  geom_point(alpha = 0.4) + 
+  geom_line(aes(y = pred), colour = "red")
+```
+
+```{r}
+tidy(increase_lm,
+      conf.int = T,
+     conf.level = .95)
+```
+
