@@ -91,3 +91,24 @@ tidy(increase_lm,
      conf.level = .95)
 ```
 
+Considerando o uso de fotos profissionais como influenciador do preço da venda.
+
+```{r}
+filtered_mario %>% 
+  add_predictions(model = photo_lm) %>% # add o que o modelo estima p cada hs_grad
+  ggplot(mapping = aes(x = stockPhoto, y = totalPr)) + 
+  geom_point(alpha = 0.4) + 
+  geom_line(aes(y = pred), colour = "red")
+```
+
+```{r}
+photo_lm <- lm(totalPr ~ stockPhoto, data=filtered_mario)
+tidy(photo_lm,
+     conf.int = T,
+     conf.level = .95)
+```
+
+```{r}
+
+```
+
